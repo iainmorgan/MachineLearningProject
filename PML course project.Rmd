@@ -1,0 +1,131 @@
+---
+title: "Exercise quality prediction - Practical Manchine Learning Project"
+author: "Iain Morgan"
+date: "15 jan 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(root.dir = "~/", echo = TRUE)
+```
+
+##Executive summary
+This report describes the application of machine-learning to predict the manner in which a physical exercise was done. The data was sourced from a study to measure the quality of a  weight-lifting exercise using sensors on the belt, forearm, arm and dumbell.
+
+Following a brief exploatory study, the data was cleaned and the training data was separated into a training and validation set, while the test data was cleaned and put to one side. A model strategy was applied to identify the best model method. Several classification models were trained on the training set, and a CART model with bagging was found to give the highest accuracy (99.8%) when when predicting the validation set outcome, so was chosen.
+
+A new model was retrained on the entire training data, then used to predict the test set outcomes. These were entered in the class quiz and achieved a 100% accuracy on the test data.
+
+##Data sourcing and exploration
+
+First, the data was sourced and examined, with DIV/0! values converted to NA:
+
+```{r, echo = FALSE}
+library(caret)
+library(randomForest)
+library(knitr)
+library(ggplot2)
+
+rawData <- read.csv("pml-training.csv",na.strings = c("NA","#DIV/0!"))
+testData <- read.csv("pml-testing.csv",na.strings = c("NA","#DIV/0!"))
+```
+
+
+First, we plot the data by index and colouring by classification. The plot shows that the data is grouped by the index, X, so we need to exclude X as a predictor. 
+
+```{r, fig.width=3, fig.height=3, fig.cap="Plot of classe vs. index"}
+g <- ggplot(data = rawData, aes(x=X,y=classe))
+g <- g + geom_point(color=as.numeric(rawData$classe))
+g
+```
+
+Next, the training data was split into training and validation sets, so that the out of sample accuracy can be better tested. Given the large number of observations, this should not be a problem, and the final model will be trained on the whole training data for maximum accuracy.
+
+At the same time, the "X" index is dropped from training, validation and testing sets, to avoid it being used as a predictor.
+
+```{r}
+trainSet <- createDataPartition(y=rawData$classe,times = 1,p=0.75,list=FALSE)
+training <- rawData[trainSet,2:160]
+validation <- rawData[-trainSet,2:160]
+testing <- testData[2:160]
+```
+
+To improve their use as predictors, several variables were coerced from logical to numeric, and the dates coerced to POSIX_lt dates. A simple function was used to perform the same cleaning on training and test data
+
+```{r}
+cleanData <- function(x) {
+  x$kurtosis_yaw_belt <- as.numeric(x$kurtosis_yaw_belt)
+  x$skewness_yaw_belt <- as.numeric(x$skewness_yaw_belt)
+  x$kurtosis_yaw_dumbbell <- as.numeric(x$kurtosis_yaw_dumbbell)
+  x$skewness_yaw_dumbbell <- as.numeric(x$skewness_yaw_dumbbell)
+  x$kurtosis_yaw_forearm <- as.numeric(x$kurtosis_yaw_forearm)
+  x$skewness_yaw_forearm <- as.numeric(x$skewness_yaw_forearm)
+  x$cvtd_timestamp <- as.POSIXct(x$cvtd_timestamp,format="%d/%m/%Y %H:%M")
+  x
+}
+
+training <- cleanData(training)
+validation <- cleanData(validation)
+testing <- cleanData(testing)
+```
+
+On inspecting the data, it was found that many of the variables have a hign proportion of NAs, making them unsuitable as predictors. A quick function was run to remove variables with more than 10% NAs from the training, validation and test set.
+
+```{r}
+dropData <- function(x){
+  apply(x,2,function(y) mean(is.na(y))<0.1)
+}
+
+colList <- dropData(training)
+training <- training[,colList]
+validation <- validation[,colList]
+testing <- testing[,colList]
+
+```
+
+##Model fit strategy
+A simple strategy was chosen to find a good model:
+
+1. Select a basic classification model (e.g. CART) and set a baseline
+2. Test additional classifiation models to find the one with highest accuracy
+3. Test the most accurate model with preprocessing to see if accuracy can be improved
+
+Each model was trained using the training set and tested against the validation set. The code is not run in this document due to runtime, but the results are shown below:
+
+Code chunk:
+
+mdl_dt <- train(classe~.,data = training,method="rpart")  # Basic CART model
+
+mdl_rf <- train(classe~.,data = training,method="rf") # Random Forest model
+
+mdl_lda <- train(classe~.,data = training,method="lda") # Linear Discriminant Analysis
+
+mdl_lda2 <- train(classe~., data=training ,method="lda", preProcess = "pca") # LDA with principal component analysis preprocessing 
+
+mdl_bag <- train(classe~.,data = training,method="treebag") # CART with bagging
+
+mdl_bag2 <- train(classe~.,data = training,method="treebag", preProcess = "pca") # CART with bagging and PCA preprocessing
+
+
+The accuracy results are:
+
+- CART model: 50.0%
+- Linear Discriminant Analysis model: 74.7%
+- LDA model with PCA: 52.2%
+- Random Forest model: No results, runtime was too long
+- CART with bagging model: 99.6%
+- CART with bagging and PCA model: 96.3%
+
+Based on this, a CART with bagging model was chosen.
+
+##Conclusion
+Now that the CART with bagging model has been chosen, a new model is trained using the full training data (including the validation set) to get maximum training and accuracy. This model is then applied to the testing set to determine the set of predicted outcomes.
+
+```{r}
+fullTraining <- cleanData(rawData[,2:160])
+fullTraining <- fullTraining[,colList]
+mdl_final <- train(classe~.,data = fullTraining,method="treebag")
+outP_final <- predict(mdl_final,newdata = testing)
+```
+
+These values will be entered into the Course Project Quiz.
