@@ -135,15 +135,8 @@ $(document).ready(function () {
 <div id="data-sourcing-and-exploration" class="section level2">
 <h2>Data sourcing and exploration</h2>
 <p>First, the data was sourced and examined, with DIV/0! values converted to NA:</p>
-<pre><code>## Loading required package: lattice</code></pre>
-<pre><code>## Loading required package: ggplot2</code></pre>
-<pre><code>## randomForest 4.6-12</code></pre>
-<pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
-<pre><code>## 
-## Attaching package: 'randomForest'</code></pre>
-<pre><code>## The following object is masked from 'package:ggplot2':
-## 
-##     margin</code></pre>
+<pre class="r"><code>rawData &lt;- read.csv(&quot;pml-training.csv&quot;,na.strings = c(&quot;NA&quot;,&quot;#DIV/0!&quot;))
+testData &lt;- read.csv(&quot;pml-testing.csv&quot;,na.strings = c(&quot;NA&quot;,&quot;#DIV/0!&quot;))</code></pre>
 <p>First, we plot the data by index and colouring by classification. The plot shows that the data is grouped by the index, X, so we need to exclude X as a predictor.</p>
 <pre class="r"><code>g &lt;- ggplot(data = rawData, aes(x=X,y=classe))
 g &lt;- g + geom_point(color=as.numeric(rawData$classe))

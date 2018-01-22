@@ -7,6 +7,10 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(root.dir = "~/", echo = TRUE)
+library(caret)
+library(randomForest)
+library(knitr)
+library(ggplot2)
 ```
 
 ##Executive summary
@@ -20,12 +24,7 @@ A new model was retrained on the entire training data, then used to predict the 
 
 First, the data was sourced and examined, with DIV/0! values converted to NA:
 
-```{r, echo = FALSE}
-library(caret)
-library(randomForest)
-library(knitr)
-library(ggplot2)
-
+```{r}
 rawData <- read.csv("pml-training.csv",na.strings = c("NA","#DIV/0!"))
 testData <- read.csv("pml-testing.csv",na.strings = c("NA","#DIV/0!"))
 ```
